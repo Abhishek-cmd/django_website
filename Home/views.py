@@ -2,6 +2,7 @@ from django.shortcuts import render, HttpResponse
 from datetime import datetime
 from Home.models import Contact
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 
 
 # Create your views here.
@@ -29,8 +30,22 @@ def contact(request):
         mobile_no = request.POST.get('mobile_no')
         created_on = datetime.today()
 
-        contact = Contact(first_name = first_name, last_name = last_name, email = email, mobile_no = mobile_no, created_on = created_on)
-        contact.save()
-        messages.success(request, "Your message has been sent")
+        if not first_name or not last_name or not email:
+            messages.warning(request, 'All fields are required.')
+            return render(request, 'contact.html')
+
+        if Contact.objects.filter(email=email).exists():
+            messages.warning(request, 'Email already registered.')
+            return render(request, 'contact.html')
+
+        try:
+            contact = Contact(first_name = first_name, last_name = last_name, email = email, mobile_no = mobile_no, created_on = created_on)
+            contact.save()
+            messages.success(request, "Your message has been sent")
+            return redirect('contact')
+        except ValidationError as e:
+            messages.warning(request, f'Error creating : {e.messages[0]}')
+            return redirect('contact')
+            # return render(request, 'contact.html')
     
     return render(request, 'contact.html')
